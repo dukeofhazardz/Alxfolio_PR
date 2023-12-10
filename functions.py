@@ -4,35 +4,38 @@
 import github
 import json
 from models import storage
-from github import Github
+from github import Github, GithubException, UnknownObjectException
 from redis import Redis
 from datetime import timedelta
 
+URL = "https://api.github.com"
 redis_client = Redis(host='localhost', port=6379, db=0)
 
 def get_user(username):
     """A function that returns the user object from redis cache"""
-    user = redis_client.get(f"{username}")
-    if user is None:
+    user_json = redis_client.get(f"{username}")
+
+    if user_json is None:
         try:
-            g = Github(base_url="https://api.github.com")
-            user_dict = vars(g.get_user(username))
-            user = {key : value for key, value in user_dict.items() if key.startswith('_rawData')}
-            user = user['_rawData']
-            redis_client.set(f"{username}", json.dumps(user))
+            github_client = Github(base_url=URL)
+            user_obj = github_client.get_user(username)
+            user_data = {key: value for key, value in vars(user_obj).items() if key.startswith('_rawData')}
+            user_json = json.dumps(user_data)
+            redis_client.set(f"{username}", user_json)
             redis_client.expire(f"{username}", timedelta(hours=24))
-        except (github.GithubException, github.UnknownObjectException):
+        except (GithubException, UnknownObjectException):
             return None
     else:
-        user = json.loads(user)
-    return user
+        user_data = json.loads(user_json)
+
+    return user_data
 
 def validate_alx(username):
     """A function that validates an ALX student"""
     repo = redis_client.get(f"{username}"+"_repo")
     if repo is None:
         try:
-            g = Github(base_url="https://api.github.com")
+            g = Github(base_url=URL)
             check_repo_exists = "alx-system_engineering-devops"
             repo = g.get_repo(f"{username}/{check_repo_exists}")
             if repo:
@@ -47,7 +50,7 @@ def get_all_repos(username):
     all_repos = redis_client.get(f"{username}"+"_all_repos")
     if all_repos is None:
         try:
-            g = Github(base_url="https://api.github.com")
+            g = Github(base_url=URL)
             all_repos = []
             user = g.get_user(username)
             repos = user.get_repos()
