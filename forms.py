@@ -24,7 +24,7 @@ class SignupForm(FlaskForm):
         min=8, max=100)], render_kw={"placeholder": "Password"})
     
     phone_no = StringField(validators=[InputRequired(), Length(
-        min=8, max=100)], render_kw={"placeholder": "Phone Number"})  
+        min=8, max=100)], render_kw={"placeholder": "Phone Number"})
 
     address = StringField(validators=[InputRequired(), Length(
         min=8, max=200)], render_kw={"placeholder": "State, Country"})   
